@@ -41,7 +41,7 @@ app = FastAPI(
 # This keeps main.py clean — it doesn't need to know the details of
 # each endpoint, just which routers exist.
 app.include_router(health.router, prefix="/health", tags=["Health"])
-app.include_router(upload.router, prefix="/uplaod", tags=["Upload"])
+app.include_router(upload.router, prefix="/upload", tags=["Upload"])
 app.include_router(documents.router,prefix="/documents",tags=["Document"])
 
 
