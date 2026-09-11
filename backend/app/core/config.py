@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 
     # --- Model Settings ---
     llm_model:str = "gemini-2.5-flash"
-    embeddings_model: str = "models/embedding-001"
+    embeddings_model: str = "models/gemini-embedding-001"
 
     # --Retrieval Settings ---
     retrieval_k:int = 6

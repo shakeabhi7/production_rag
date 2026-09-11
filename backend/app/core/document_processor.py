@@ -45,6 +45,6 @@ def process_pdf(file_path:Path,original_filename:str):
 
         # pyMuPPDFLoader already adds a "page" key to metadata
 
-    logger.info(f"Splits '{original_filename} into {len(chunks)} chunks")
+    logger.info(f"Splits '{original_filename}' into {len(chunks)} chunks")
 
     return document_id, chunks
