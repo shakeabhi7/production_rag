@@ -23,8 +23,8 @@ class Settings(BaseSettings):
     chunk_overlap :int = 200
 
     # --- Model Settings ---
-    llm_model:str = "gemini-2.5-flash"
-    embeddings_model: str = "models/gemini-embedding-001"
+    llm_model:str = "gemini-3.6-flash"
+    embedding_model: str = "models/gemini-embedding-2"
 
     # --Retrieval Settings ---
     retrieval_k:int = 6

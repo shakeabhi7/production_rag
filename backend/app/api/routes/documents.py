@@ -9,7 +9,7 @@ router =APIRouter()
 def list_documents():
     """
     List all unique documents currently stored in the vectorstore
-    (grouped by documnet_id, since each documents has many chunks).
+    (grouped by document_id, since each documents has many chunks).
     """
 
     vectorstore = get_vectorstore()
@@ -31,24 +31,24 @@ def list_documents():
     return {"documents": list(documents.values()),"total_documents":len(documents)}
 
 @router.delete("/{documnent_id}")
-def delete_document(documnet_id:str):
+def delete_document(document_id:str):
     """
     Deletes all chunks belonging to a specific document_id from the
-    vectorstore. This removes the documnet from future retrieval without 
+    vectorstore. This removes the document from future retrieval without 
     touching any other documents.
     """
     vectorstore = get_vectorstore()
 
     # check the document actually exists before attempting deletion, so we
     # can return a clear 404 instead of silently doing nothing
-    existing  =  vectorstore.get(where={"document_id":documnet_id},include=["metadatas"])
+    existing  =  vectorstore.get(where={"document_id":document_id},include=["metadatas"])
     if not existing["ids"]:
-        raise HTTPException(status_code=404,detail=f"No document found with id '{documnet_id}")
+        raise HTTPException(status_code=404,detail=f"No document found with id '{document_id}")
 
     chunk_count = len(existing["ids"])
     vectorstore.delete(ids=existing["ids"])
 
-    logger.info(f"Deleted document_id = {documnet_id} ({chunk_count} chunks removed)")
+    logger.info(f"Deleted document_id = {document_id} ({chunk_count} chunks removed)")
 
-    return {"document_id": documnet_id,"chunks_deleted":chunk_count,"status":"deleted"}
+    return {"document_id": document_id,"chunks_deleted":chunk_count,"status":"deleted"}
 

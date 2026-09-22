@@ -2,8 +2,7 @@ import uuid
 from pathlib import Path
 
 from langchain_community.document_loaders import PyMuPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-
+from langchain_text_splitters import RecursiveCharacterTextSplitter   
 from app.core.config import settings
 from app.core.logger import get_logger
 

@@ -19,6 +19,6 @@ def health_check():
     return {
         "status" : "OK",
         "llm_model" : settings.llm_model,
-        "embedding_model" : settings.embeddings_model,
+        "embedding_model" : settings.embedding_model,
         
     }
