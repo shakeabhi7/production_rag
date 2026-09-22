@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     embedding_model: str = "models/gemini-embedding-2"
 
     # --Retrieval Settings ---
-    retrieval_k:int = 6
+    retrieval_k:int = 10
 
     # This tells pydantic - settings to load variables from a .env file
     model_config = SettingsConfigDict(env_file=ENV_FILE_PATH,env_file_encoding="utf-8")
