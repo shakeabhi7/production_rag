@@ -2,34 +2,84 @@ from typing import Optional
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_classic.chains import create_history_aware_retriever, create_retrieval_chain
-from langchain_classic.chains.combine_documents import create_stuff_documents_chain   
+from langchain.chains import create_history_aware_retriever, create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain 
 from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_core.documents import Document
+from langchain_community.retrievers import BM25Retriever
+from langchain_community.retrievers import BM25Retriever
+from langchain.retrievers import EnsembleRetriever
 
+
+from app.core.logger import get_logger
 from app.core.config import settings
 from app.core.vectorstore import get_vectorstore
 from app.core.memory import get_session_history
 
+logger = get_logger(__name__)
+
 def build_retriever(document_id: Optional[str] = None):
     """
-    Builds a retriever over the vectorstore.
-
-    If document_id is given, retrieval is SCOPED to only that document's
-    chunks (using Chroma's metadata filter). If document_id is None,
-    retrieval searches across ALL uploaded documents (global search).
-
-    This is the "hybrid" retrieval behavior: global by default, scoped on
-    request.
+    Builds a HYBRID retriever that combines two different search strategies:
+ 
+    1. Semantic search (Chroma / embeddings) — finds chunks with similar
+       MEANING to the query, even if the exact words differ.
+    2. Keyword search (BM25) — finds chunks that contain the exact WORDS
+       from the query, scored by term frequency. This is what semantic
+       search alone misses — e.g. a query like "table of contents" was
+       matching random chapter-heading chunks (semantically "similar")
+       instead of the actual contents page, because BM25 wasn't in play to
+       weight the page where those exact words appear most densely.
+ 
+    EnsembleRetriever runs both searches and merges their results using
+    Reciprocal Rank Fusion (RRF) — chunks that rank highly in BOTH lists
+    float to the top of the combined result.
+ 
+    If document_id is given, both retrievers are scoped to only that
+    document's chunks
     """
     vectorstore = get_vectorstore()
 
-    search_kwargs = {"k": settings.retrieval_k}
-    if document_id:
-        # Chroma's metadata filter — only chunks whose metadata.document_id
-        # matches this value will be considered during search.
-        search_kwargs["filter"] = {"document_id": document_id}
+    # --- Fetch the chunk pool BM25 will search over ---
+    # BM25Retriever works entirely in-memory over a fixed set of documents
+    # (unlike Chroma, it has no built-in metadata filtering), so we pull
+    # the relevant chunks out of Chroma first — either all of them (global
+    # search) or just one document's (scoped search) — and hand them to
+    # BM25Retriever directly.
+    
 
-    return vectorstore.as_retriever(search_kwargs=search_kwargs)
+    where_filter = {"document_id":document_id} if document_id else None
+
+    raw = vectorstore.get(include=["documents", "metadatas"], where=where_filter)
+
+    all_chunks = [
+        Document(page_content=text, metadata = meta)
+        for text, meta in zip(raw["documents"],raw["metadatas"])
+    ]
+
+    if not all_chunks:
+        logger.warning(
+            f"No Chunks found for BM25 index (document_id={document_id}) - "
+            "falling back to semantic-only search."
+        )
+        search_kwargs = {"k":settings.retrieval_k}
+        if document_id:
+            search_kwargs['filter'] = {"document_id":document_id}
+        return vectorstore.as_retriever(search_kwargs=search_kwargs)
+
+    bm25_retriever = BM25Retriever.from_documents(all_chunks)
+    bm25_retriever.k = settings.retrieval_k
+
+    search_kwargs = {"k":settings.retrieval_k}
+    if document_id:
+        search_kwargs["filter"] = {"document_id":document_id}
+    semantic_retriever = vectorstore.as_retriever(search_kwargs=search_kwargs)
+
+    hybrid_retriever = EnsembleRetriever(
+        retrievers = [semantic_retriever,bm25_retriever],
+        weights = [0.5,0.5]
+    )
+    return hybrid_retriever
 
 
 def build_conversational_chain(document_id: Optional[str] = None):
