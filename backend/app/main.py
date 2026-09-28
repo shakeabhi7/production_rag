@@ -1,9 +1,13 @@
 from contextlib import asynccontextmanager
-
+from fastapi import Request
+from fastapi.responses import JSONResponse
 from fastapi import FastAPI
-
+from fastapi.exceptions import HTTPException as FasrAPIHTTPException
 from app.api.routes import health,upload,documents,chat
 from app.core.logger import get_logger
+
+from app.core.middleware import LoggingMiddleware
+from app.core.request_context import get_request_id
 
 logger = get_logger(__name__)
 
@@ -36,6 +40,7 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+app.add_middleware(LoggingMiddleware)
 
 # Register routes from other files ("routers") into the main app.
 # This keeps main.py clean — it doesn't need to know the details of
@@ -50,3 +55,32 @@ def root():
     """A simple root endpoint just to confirm the server is alive."""
     logger.info("Root endpoint called")
     return {"message": "Production RAG API is running"}
+
+@app.exception_handler(FasrAPIHTTPException)
+async def http_exception_handler(request:Request,exc:FasrAPIHTTPException):
+    """
+    Standardize ALL HTTPException responses into one consistent shape,
+    instead of FastAPI's default
+    """
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error":exc.detail,"request_id":get_request_id()}
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request:Request,exc:Exception):
+    """
+    Catches ANY unhandled exception, anywhere in the app - the ones we didn't specifically 
+    anticipate with try/except. Logs the full traceback for debugging, but shows the user 
+    only a clean, generic message(no internal details leaked).
+    """
+    logger.exception(f"Unhandled exception: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error":"An unexpected error occured. Please try again.",
+            "request_id": get_request_id()
+        }
+    )
+
