@@ -4,7 +4,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 
 from app.core.config import settings
 from app.core.document_processor import process_pdf
-from app.core.vectorstore import add_documents_batched
+from app.core.vectorstore import add_documents_batched,get_vectorstore
 from app.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -42,20 +42,34 @@ async def upload_document(file: UploadFile = File(...)):
         document_id, chunks = process_pdf(saved_path,file.filename)
     except Exception as e:
         logger.error(f"Failed to process '{file.filename}' : {e}")
-        raise HTTPException(status_code=500, detail = f"Failed to process PDF: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to process the PDF. Please try again or upload a different file.",
+        )
 
     # Embed + store in ChromaDB
     try:
         added_count = add_documents_batched(chunks)
         logger.info(
-            f"Added {added_count} chunks to vectorstore for"
-            f"document_id = {document_id} ('{file.filename}')"
+            f"Added {added_count} chunks to vectorstore for "
+            f"document_id={document_id} ('{file.filename}')"
         )
+    except Exception:
+        logger.exception(f"Failed to embed/store '{file.filename}'")
+        # clean up any chunks that were saved before the failure, so a
+        # failed upload doesn't leave a partial/incomplete documnet behind.
+        try:
+            vectorstore = get_vectorstore()
+            vectorstore.delete(where={"document_id":document_id})
+            logger.info(f"Cleaned up partial chunks for document_id={document_id}")
 
-    except Exception as e:
-        logger.error(f"Failed to embed/store '{file.filename}' : {e}")
-        raise HTTPException(status_code=500,detail=f"Failed to embed document: {e}")
-
+        except Exception:
+            logger.exception(f"cleaned failed for document_id={document_id}")
+            
+        raise HTTPException(
+            status_code=503,
+            detail="The embedding service is temporarily unavailable. Please try again in a few minutes.",
+        )
     return {
         "document_id" : document_id,
         "filename" : file.filename,

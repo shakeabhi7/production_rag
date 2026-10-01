@@ -43,7 +43,10 @@ stream_handler.setFormatter(formatter)
 stream_handler.addFilter(RequestIDFilter())
 
 logging.basicConfig(level=logging.INFO, handlers=[stream_handler, file_handler])
-
+# Chroma's telemetry client logs an ERROR on every call because of a
+# version mismatch inside its own dependencies. It doesn't affect our app,
+# so we raise only that logger's threshold to hide the noise.
+logging.getLogger("chromadb.telemetry.product.posthog").setLevel(logging.CRITICAL)
 
 def get_logger(name: str) -> logging.Logger:
     return logging.getLogger(name)

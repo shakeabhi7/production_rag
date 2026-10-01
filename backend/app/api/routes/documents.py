@@ -30,7 +30,7 @@ def list_documents():
             documents[doc_id]["chunk_count"] +=1
     return {"documents": list(documents.values()),"total_documents":len(documents)}
 
-@router.delete("/{documnent_id}")
+@router.delete("/{document_id}")
 def delete_document(document_id:str):
     """
     Deletes all chunks belonging to a specific document_id from the
@@ -43,7 +43,7 @@ def delete_document(document_id:str):
     # can return a clear 404 instead of silently doing nothing
     existing  =  vectorstore.get(where={"document_id":document_id},include=["metadatas"])
     if not existing["ids"]:
-        raise HTTPException(status_code=404,detail=f"No document found with id '{document_id}")
+        raise HTTPException(status_code=404,detail=f"No document found with id '{document_id}' ")
 
     chunk_count = len(existing["ids"])
     vectorstore.delete(ids=existing["ids"])

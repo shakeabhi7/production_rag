@@ -1,8 +1,13 @@
 from contextlib import asynccontextmanager
+
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from fastapi import FastAPI
-from fastapi.exceptions import HTTPException as FasrAPIHTTPException
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+
 from app.api.routes import health,upload,documents,chat
 from app.core.logger import get_logger
 
@@ -56,13 +61,12 @@ def root():
     logger.info("Root endpoint called")
     return {"message": "Production RAG API is running"}
 
-@app.exception_handler(FasrAPIHTTPException)
-async def http_exception_handler(request:Request,exc:FasrAPIHTTPException):
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request:Request,exc:StarletteHTTPException):
     """
     Standardize ALL HTTPException responses into one consistent shape,
     instead of FastAPI's default
     """
-
     return JSONResponse(
         status_code=exc.status_code,
         content={"error":exc.detail,"request_id":get_request_id()}
@@ -79,8 +83,19 @@ async def global_exception_handler(request:Request,exc:Exception):
     return JSONResponse(
         status_code=500,
         content={
-            "error":"An unexpected error occured. Please try again.",
+            "error":"An unexpected error occurred. Please try again.",
             "request_id": get_request_id()
         }
     )
 
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    logger.warning(f"Validation error on {request.method} {request.url.path}: {exc.errors()}")
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": "Invalid request data",
+            "details": jsonable_encoder(exc.errors()),
+            "request_id": get_request_id(),
+        },
+    )

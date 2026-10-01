@@ -23,7 +23,7 @@ def process_pdf(file_path:Path,original_filename:str):
 
     document_id = str(uuid.uuid4())
 
-    logger.info(f"Loading PDF '{original_filename}' (documnet_id = {document_id})")
+    logger.info(f"Loading PDF '{original_filename}' (document_id = {document_id})")
     loader = PyMuPDFLoader(str(file_path))
     docs = loader.load()
     logger.info(f"Loaded {len(docs)} pages from '{original_filename}")

@@ -4,6 +4,8 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 
+import time 
+
 from app.core.chains import build_conversational_chain
 from app.core.logger import get_logger
 
@@ -106,6 +108,7 @@ def chat_stream(request: ChatRequest):
     
     def event_generator():
         sources = set()
+        stream_start = time.time()
         try:
             # .stream() returns chunks progressively as the chain runs
         
@@ -127,6 +130,8 @@ def chat_stream(request: ChatRequest):
             # After all tokens are sent, send the sources as a final event
             yield f"data: {json.dumps({'sources': sorted(sources)})}\n\n"
             yield "data: [DONE]\n\n"
+            duration_ms = round((time.time() - stream_start) * 1000,2)
+            logger.info(f"Stream completed | duration = {duration_ms}ms")
 
         except Exception as e:
             logger.error(f"Streaming chat failed: {e}")

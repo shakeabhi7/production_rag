@@ -24,14 +24,24 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
         logger.info(f"Request started | {request.method} {request.url.path}")
 
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception:
+            # Without this, a crashed request never gets a "completed" log line.
+    
+            duration_ms = round((time.time() - start_time) * 1000, 2)
+            logger.error(
+                f"Request failed | {request.method} {request.url.path} | "
+                f"status=500 | duration={duration_ms}ms"
+            )
+            raise
 
         duration_ms = round((time.time() - start_time) * 1000,2)
         logger.info(
             f"Request completed | {request.method} {request.url.path} |"
-            f"status = {response.status_code} | duration = {duration_ms}ms"
+            f"status={response.status_code} | duration={duration_ms}ms"
         )
 
-        response.headers["X=Request-ID"] = request_id
+        response.headers["X-Request-ID"] = request_id
         return response
         
