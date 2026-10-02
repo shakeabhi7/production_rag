@@ -6,9 +6,7 @@ import os
 import logging
 from dotenv import load_dotenv
 
-# --- Config ---
-# (Hinglish: backend ka URL ab .env se aa raha hai, code mein hardcoded
-#  nahi hai — taaki deployment ke waqt sirf .env badalna padhe, code nahi)
+
 load_dotenv()
 BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
 
@@ -17,8 +15,6 @@ BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
 # a Streamlit app is a single-user local script, not a multi-user server,
 # so there's no need for request IDs or daily rotation. Just a plain file
 # log, useful for debugging issues after the fact.
-# (Hinglish: yeh backend jitna complex nahi hai, kyunki yeh ek hi user
-#  chalata hai apni machine pe — bas ek simple file mein log ho raha hai)
 logging.basicConfig(
     filename="frontend.log",
     level=logging.INFO,
@@ -57,9 +53,6 @@ with st.sidebar:
 
                 # Catching specific exception types gives the user a much
                 # clearer message than one generic "something went wrong"
-                # (Hinglish: alag-alag error types ko alag se pakadke,
-                #  user ko sahi se bata rahe hain kya hua — timeout ya
-                #  backend hi band hai)
                 except requests.exceptions.Timeout:
                     st.error("Upload timed out. The file may be too large, or the server is busy.")
                     logger.error(f"Upload timeout for '{uploaded_file.name}'")
